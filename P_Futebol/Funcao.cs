@@ -129,7 +129,7 @@ namespace P_Futebol
                         {
                             campeao = "[ ***** CAMPEÃO ***** ]";
                         }
-                        Console.WriteLine($"\n[ {contador + 1} ] Time: {dr[0].ToString()} {campeao}");
+                        Console.WriteLine($"\n\n[ {contador + 1} ] Time: {dr[0].ToString()} {campeao}");
                         Console.Write($"Pontuação: {dr[1].ToString()}");
                         Console.Write($"   Vitórias: {dr[2].ToString()}");
                         Console.Write($"   Empates: {dr[3].ToString()}");
@@ -241,18 +241,18 @@ namespace P_Futebol
                                              " FROM Partida";
 
                         Console.Write($"\n[Partida] ");
-                        Console.Write($"[".PadRight(10) + "Time Casa".PadRight(21) + "] ");
+                        Console.Write($"[".PadRight(15) + "Time Casa".PadRight(21) + "] ");
                         Console.Write($"[ Jogos ]".PadRight(10));
-                        Console.Write($"[".PadRight(10) + "Time Visitante".PadRight(21) + "] ");
+                        Console.Write($"[".PadRight(15) + "Time Visitante".PadRight(21) + "] ");
                         using (SqlDataReader dr = cmdSQL.ExecuteReader())
                         {
                             while (dr.Read())
                             {
 
                                 Console.Write($"\n[   {dr[0].ToString().PadRight(2)}  ]");
-                                Console.Write($" [{dr[1].ToString().PadRight(30)}]");
+                                Console.Write($" [{dr[1].ToString().PadRight(35)}]");
                                 Console.Write($" ({dr[2].ToString().PadRight(2)} X {dr[3].ToString().PadRight(2)})");
-                                Console.Write($" [{dr[4].ToString().PadRight(30)}]");
+                                Console.Write($" [{dr[4].ToString().PadRight(35)}]");
                             }
                             Console.WriteLine("\nPressione qualquer tecla para continuar");
                             Console.ReadKey();
