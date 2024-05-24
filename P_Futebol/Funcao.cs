@@ -2,12 +2,12 @@
 using System.Data;
 namespace P_Futebol
 {
-    internal class BancoDML
+    internal class Funcao
     {
         private static Banco _dbSQL = new Banco();
         private SqlConnection _connSQL = new SqlConnection(_dbSQL.Caminho());
 
-        public BancoDML()
+        public Funcao()
         {
 
         }
@@ -30,37 +30,7 @@ namespace P_Futebol
                 dtcriacao = returnDate();
 
                 Clube timeObj = new(nome, apelido, dtcriacao);
-
-                #region Inserir
-                _connSQL.Open();
-                SqlCommand cmdSQL = new SqlCommand();
-
-                cmdSQL.CommandText = " EXEC Inserir_Time @nome, @apelido, @dtcriacao; ";
-
-                SqlParameter nomeSQL = new SqlParameter("@nome", System.Data.SqlDbType.VarChar, 30);
-                SqlParameter apelidoSQL = new SqlParameter("@apelido", System.Data.SqlDbType.VarChar, 30);
-                SqlParameter dtcriacaoSQL = new SqlParameter("@dtcriacao", System.Data.SqlDbType.Date);
-
-                nomeSQL.Value = timeObj.nome;
-                apelidoSQL.Value = timeObj.apelido;
-                dtcriacaoSQL.Value = timeObj.dtcriacao;
-
-                cmdSQL.Parameters.Add(nomeSQL);
-                cmdSQL.Parameters.Add(apelidoSQL);
-                cmdSQL.Parameters.Add(dtcriacaoSQL);
-
-                cmdSQL.Connection = _connSQL;
-                //cmdSQL.ExecuteNonQuery();
-                using (SqlDataReader dr = cmdSQL.ExecuteReader())
-                {
-                    while (dr.Read())
-                    {
-                        Console.WriteLine(dr[0].ToString());
-                        Console.WriteLine("Pressione qualquer tecla para continuar");
-                    }
-                }
-                _connSQL.Close();
-                #endregion
+                timeObj.InserirClube(_connSQL);
             }
             Console.ReadKey();
         }
@@ -69,34 +39,31 @@ namespace P_Futebol
         {
             string nome = "", apelido = "";
             DateOnly dtcriacao;
-            using (_connSQL)
+            try
             {
-                try
+                _connSQL.Open();
+                SqlCommand cmdSQL = new SqlCommand();
+                cmdSQL.CommandText = " SELECT Nome, Apelido, CONVERT(VARCHAR(10),DtCriacao,103) FROM Clube ORDER BY Id";
+                cmdSQL.Connection = _connSQL;
+                using (SqlDataReader dr = cmdSQL.ExecuteReader())
                 {
-                    _connSQL.Open();
-                    SqlCommand cmdSQL = new SqlCommand();
-                    cmdSQL.CommandText = " SELECT Nome, Apelido, CONVERT(VARCHAR(10),DtCriacao,103) FROM Clube ORDER BY Id";
-                    cmdSQL.Connection = _connSQL;
-                    using (SqlDataReader dr = cmdSQL.ExecuteReader())
+                    while (dr.Read())
                     {
-                        while (dr.Read())
-                        {
-                            nome = dr[0].ToString();
-                            apelido = dr[1].ToString();
-                            dtcriacao = DateOnly.Parse(dr[2].ToString());
-                            Console.WriteLine($"Time: {nome} Apelido: {apelido} Data Fundação: {dtcriacao}");
-                        }
+                        nome = dr[0].ToString();
+                        apelido = dr[1].ToString();
+                        dtcriacao = DateOnly.Parse(dr[2].ToString());
+                        Console.WriteLine($"Time: {nome} Apelido: {apelido} Data Fundação: {dtcriacao}");
                     }
-                    if (nome == "")
-                    {
-                        Console.WriteLine("Nenhum time encontrado!");
-                    }
-                    _connSQL.Close();
                 }
-                catch (Exception ex)
+                if (nome == "")
                 {
-                    Console.WriteLine(ex.Message);
+                    Console.WriteLine("Nenhum time encontrado!");
                 }
+                _connSQL.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
             }
             Console.WriteLine("\nPressione qualquer tecla para continuar");
             Console.ReadKey();
@@ -107,7 +74,7 @@ namespace P_Futebol
             int countClubes = RetornarClubes();
             int countPartidas = RetornarPartidas();
             int[] listaClubes = new int[countClubes];
-            int contador = 0, Rodada = 0;
+            int Rodada = 0;
 
             if (countClubes == 0)
             {
@@ -119,53 +86,24 @@ namespace P_Futebol
             }
             else
             {
-                try
+                Clube objClube = new Clube();
+                listaClubes = objClube.PreencherVetorClubes(_connSQL, countClubes);
+                for (int i = 0; i < countClubes; i++)
                 {
-                    _connSQL.Open();
-                    SqlCommand cmdSQL = new SqlCommand();
-                    cmdSQL.CommandText = " SELECT Id FROM Clube ORDER BY Id";
-                    cmdSQL.Connection = _connSQL;
-                    using (SqlDataReader dr = cmdSQL.ExecuteReader())
+                    Rodada++;
+                    for (int j = 0; j < countClubes; j++)
                     {
-                        while (dr.Read())
+                        if (i != j)
                         {
-                            listaClubes[contador] = int.Parse(dr[0].ToString());
-                            contador++;
-                        }
-                    }
-
-                    for (int i = 0; i < countClubes; i++)
-                    {
-                        Rodada++;
-                        for (int j = 0; j < countClubes; j++)
-                        {
-                            if (i != j)
-                            {
-                                SqlCommand sql_cmnd = new SqlCommand("Inserir_Partida", _connSQL);
-                                sql_cmnd.CommandType = CommandType.StoredProcedure;
-                                sql_cmnd.Parameters.AddWithValue("@IdTimeCasa", SqlDbType.Int).Value = listaClubes[i];
-                                sql_cmnd.Parameters.AddWithValue("@GolsCasa", SqlDbType.Int).Value = new Random().Next(0, 10);
-                                sql_cmnd.Parameters.AddWithValue("@IdTimeVisitante", SqlDbType.Int).Value = listaClubes[j];
-                                sql_cmnd.Parameters.AddWithValue("@GolsVisitante", SqlDbType.Int).Value = new Random().Next(0, 10);
-                                sql_cmnd.Parameters.AddWithValue("@Rodada", SqlDbType.Int).Value = Rodada;
-                                sql_cmnd.ExecuteNonQuery();
-                            }
+                            Partida objPartida = new Partida(listaClubes[i], new Random().Next(0, 10), listaClubes[j], new Random().Next(0, 10), Rodada);
+                            objPartida.InserirPartida(_connSQL);
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                    Console.ReadKey();
-                }
-                finally
-                {
-                    _connSQL.Close();
-                    Console.WriteLine("Campeonato restado com sucesso!");
-                    Console.WriteLine("\nPressione qualquer tecla para continuar");
-                }
+                Console.WriteLine("Partidas cadastradas com sucesso!");
+                Console.WriteLine("\nPressione qualquer tecla para continuar");
+                Console.ReadKey();
             }
-            Console.ReadKey();
         }
         public void RetornarTabela()
         {
@@ -217,7 +155,7 @@ namespace P_Futebol
         {
             if (RetornarPartidas() > 0)
             {
-                #region Ler
+                #region SQL
                 _connSQL.Open();
                 SqlCommand cmdSQL = new SqlCommand();
 
@@ -296,17 +234,25 @@ namespace P_Futebol
                         break;
                     case 4:
                         cmdSQL.CommandText = " SELECT IdPartida, " +
-                                             " (SELECT Nome + ' (' + Apelido + ') ' FROM Clube WHERE Clube.Id = Partida.IdTimeCasa) + ' ' + " +
-                                             " CAST(GolsTimeCasa AS VARCHAR(2)) + ' X ' + " +
-                                             " CAST(GolsTimeVisitante AS VARCHAR(2)) + ' ' + " +
+                                             " (SELECT Nome + ' (' + Apelido + ') ' FROM Clube WHERE Clube.Id = Partida.IdTimeCasa), " +
+                                             " CAST(GolsTimeCasa AS VARCHAR(2)), " +
+                                             " CAST(GolsTimeVisitante AS VARCHAR(2)), " +
                                              " (SELECT Nome + ' (' + Apelido + ') ' FROM Clube WHERE Clube.Id = Partida.IdTimeVisitante) " +
                                              " FROM Partida";
+
+                        Console.Write($"\n[Partida] ");
+                        Console.Write($"[".PadRight(10) + "Time Casa".PadRight(21) + "] ");
+                        Console.Write($"[ Jogos ]".PadRight(10));
+                        Console.Write($"[".PadRight(10) + "Time Visitante".PadRight(21) + "] ");
                         using (SqlDataReader dr = cmdSQL.ExecuteReader())
                         {
                             while (dr.Read())
                             {
-                                Console.WriteLine($"\n  Partida: {dr[0].ToString()}");
-                                Console.Write($"    [ {dr[1].ToString()} ]");
+
+                                Console.Write($"\n[   {dr[0].ToString().PadRight(2)}  ]");
+                                Console.Write($" [{dr[1].ToString().PadRight(30)}]");
+                                Console.Write($" ({dr[2].ToString().PadRight(2)} X {dr[3].ToString().PadRight(2)})");
+                                Console.Write($" [{dr[4].ToString().PadRight(30)}]");
                             }
                             Console.WriteLine("\nPressione qualquer tecla para continuar");
                             Console.ReadKey();
@@ -332,23 +278,20 @@ namespace P_Futebol
             opc = Console.ReadLine();
             if (opc.ToLower() == "s")
             {
-                using (_connSQL)
+                try
                 {
-                    try
-                    {
-                        _connSQL.Open();
-                        SqlCommand sql_cmnd = new SqlCommand("ResetarCampeonato", _connSQL);
-                        sql_cmnd.CommandType = CommandType.StoredProcedure;
-                        sql_cmnd.ExecuteNonQuery();
-                        _connSQL.Close();
-                        Console.WriteLine("Campeonato restado com sucesso!");
-                        Console.WriteLine("\nPressione qualquer tecla para continuar");
-                        Console.ReadKey();
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    _connSQL.Open();
+                    SqlCommand sql_cmnd = new SqlCommand("ResetarCampeonato", _connSQL);
+                    sql_cmnd.CommandType = CommandType.StoredProcedure;
+                    sql_cmnd.ExecuteNonQuery();
+                    _connSQL.Close();
+                    Console.WriteLine("Campeonato restado com sucesso!");
+                    Console.WriteLine("\nPressione qualquer tecla para continuar");
+                    Console.ReadKey();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
                 }
             }
         }
@@ -359,23 +302,20 @@ namespace P_Futebol
             opc = Console.ReadLine();
             if (opc.ToLower() == "s")
             {
-                using (_connSQL)
+                try
                 {
-                    try
-                    {
-                        _connSQL.Open();
-                        SqlCommand sql_cmnd = new SqlCommand("ResetarTimes", _connSQL);
-                        sql_cmnd.CommandType = CommandType.StoredProcedure;
-                        sql_cmnd.ExecuteNonQuery();
-                        _connSQL.Close();
-                        Console.WriteLine("Campeonato restado e times excluídos com sucesso!");
-                        Console.WriteLine("\nPressione qualquer tecla para continuar");
-                        Console.ReadKey();
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    _connSQL.Open();
+                    SqlCommand sql_cmnd = new SqlCommand("ResetarTimes", _connSQL);
+                    sql_cmnd.CommandType = CommandType.StoredProcedure;
+                    sql_cmnd.ExecuteNonQuery();
+                    _connSQL.Close();
+                    Console.WriteLine("Campeonato restado e times excluídos com sucesso!");
+                    Console.WriteLine("\nPressione qualquer tecla para continuar");
+                    Console.ReadKey();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
                 }
             }
         }
