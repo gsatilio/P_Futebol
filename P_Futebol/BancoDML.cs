@@ -1,15 +1,12 @@
 ﻿using Microsoft.Data.SqlClient;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-
+using System.Data;
 namespace P_Futebol
 {
     internal class BancoDML
     {
+        private static Banco _dbSQL = new Banco();
+        private SqlConnection _connSQL = new SqlConnection(_dbSQL.Caminho());
+
         public BancoDML()
         {
 
@@ -29,13 +26,8 @@ namespace P_Futebol
 
             Clube timeObj = new(nome, apelido, dtcriacao);
 
-            #region Conexao com o Banco
-            Banco dbSQL = new Banco();
-            SqlConnection connSQL = new SqlConnection(dbSQL.Caminho());
-            #endregion
-
             #region Inserir
-            connSQL.Open();
+            _connSQL.Open();
             SqlCommand cmdSQL = new SqlCommand();
 
             cmdSQL.CommandText = " EXEC Inserir_Time @nome, @apelido, @dtcriacao; ";
@@ -52,7 +44,7 @@ namespace P_Futebol
             cmdSQL.Parameters.Add(apelidoSQL);
             cmdSQL.Parameters.Add(dtcriacaoSQL);
 
-            cmdSQL.Connection = connSQL;
+            cmdSQL.Connection = _connSQL;
             //cmdSQL.ExecuteNonQuery();
             using (SqlDataReader dr = cmdSQL.ExecuteReader())
             {
@@ -63,27 +55,68 @@ namespace P_Futebol
                     Console.ReadKey();
                 }
             }
-            connSQL.Close();
+            _connSQL.Close();
             #endregion
         }
+
+        public void InserirPartida()
+        {
+            int clubes = 0, partidas = 0;
+            using (_connSQL)
+            {
+                try
+                {
+                    _connSQL.Open();
+                    SqlCommand cmdSQL = new SqlCommand();
+                    cmdSQL.CommandText = " SELECT ISNULL((SELECT MAX(RODADA) FROM PARTIDA),0), ISNULL((SELECT COUNT(*) FROM CLUBE),0) ";
+                    cmdSQL.Connection = _connSQL;
+                    using (SqlDataReader dr = cmdSQL.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            clubes = int.Parse(dr[0].ToString());
+                            partidas = int.Parse(dr[1].ToString());
+                        }
+                    }
+                    _connSQL.Close();
+
+                    if (clubes == partidas)
+                    {
+                        Console.WriteLine("Atenção - Todas as partidas já foram registradas! Resete o campeonato para gerar novas partidas.");
+                    }
+                    else
+                    {
+                        _connSQL.Open();
+                        SqlCommand sql_cmnd = new SqlCommand("CriaPartida", _connSQL);
+                        sql_cmnd.CommandType = CommandType.StoredProcedure;
+                        sql_cmnd.ExecuteNonQuery();
+                        _connSQL.Close();
+                        Console.WriteLine("Partidas geradas com sucesso!");
+                    }
+                    Console.WriteLine("\nPressione qualquer tecla para continuar");
+                    Console.ReadKey();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }
+        }
+
         public void RetornarTabela()
         {
             int contador = 0;
             string campeao = "";
-            #region Conexao com o Banco
-            Banco dbSQL = new Banco();
-            SqlConnection connSQL = new SqlConnection(dbSQL.Caminho());
-            #endregion
 
             #region Inserir
-            connSQL.Open();
+            _connSQL.Open();
             SqlCommand cmdSQL = new SqlCommand();
 
-            cmdSQL.CommandText = " SELECT B.Nome, A.Pontuacao, A.Vitorias, A.Empates, A.Derrotas " +
+            cmdSQL.CommandText = " SELECT (B.Nome + ' (' + B.Apelido + ') ' + CONVERT(VARCHAR(10),B.DtCriacao,103)), A.Pontuacao, A.Vitorias, A.Empates, A.Derrotas " +
                                  " FROM CLASSIFICACAO A JOIN CLUBE B\r\nON A.IdTime = B.Id " +
                                  " ORDER BY PONTUACAO DESC ";
 
-            cmdSQL.Connection = connSQL;
+            cmdSQL.Connection = _connSQL;
             using (SqlDataReader dr = cmdSQL.ExecuteReader())
             {
                 while (dr.Read())
@@ -103,26 +136,22 @@ namespace P_Futebol
                 Console.WriteLine("\nPressione qualquer tecla para continuar");
                 Console.ReadKey();
             }
-            connSQL.Close();
+            _connSQL.Close();
             #endregion
         }
 
         public void RetornarGols(int tipo)
         {
-            #region Conexao com o Banco
-            Banco dbSQL = new Banco();
-            SqlConnection connSQL = new SqlConnection(dbSQL.Caminho());
-            #endregion
 
             #region Ler
-            connSQL.Open();
+            _connSQL.Open();
             SqlCommand cmdSQL = new SqlCommand();
 
-            cmdSQL.Connection = connSQL;
+            cmdSQL.Connection = _connSQL;
             switch (tipo)
             {
                 case 0: // gols realizados
-                    cmdSQL.CommandText = " SELECT B.Nome, A.GolsFeitos " +
+                    cmdSQL.CommandText = " SELECT (B.Nome + ' (' + B.Apelido + ') ' + CONVERT(VARCHAR(10),B.DtCriacao,103)), A.GolsFeitos " +
                                          " FROM CLASSIFICACAO A JOIN CLUBE B ON A.IdTime = B.Id " +
                                          " WHERE A.GolsFeitos = (SELECT MAX(GolsFeitos) FROM CLASSIFICACAO) ";
                     using (SqlDataReader dr = cmdSQL.ExecuteReader())
@@ -136,7 +165,7 @@ namespace P_Futebol
                     }
                     break;
                 case 1: // gols sofridos
-                    cmdSQL.CommandText = " SELECT B.Nome, A.GolsSofridos " +
+                    cmdSQL.CommandText = " SELECT (B.Nome + ' (' + B.Apelido + ') ' + CONVERT(VARCHAR(10),B.DtCriacao,103)), A.GolsSofridos " +
                                          " FROM CLASSIFICACAO A JOIN CLUBE B ON A.IdTime = B.Id " +
                                          " WHERE A.GolsSofridos = (SELECT MAX(GolsSofridos) FROM CLASSIFICACAO) ";
                     using (SqlDataReader dr = cmdSQL.ExecuteReader())
@@ -174,7 +203,7 @@ namespace P_Futebol
                     }
                     break;
                 case 3: // maior nro gols por time
-                    cmdSQL.CommandText = " SELECT A.IdTime, B.Nome, A.MaiorNroGols, " +
+                    cmdSQL.CommandText = " SELECT A.IdTime, (B.Nome + ' (' + B.Apelido + ') ' + CONVERT(VARCHAR(10),B.DtCriacao,103)), A.MaiorNroGols, " +
                                          " ISNULL((SELECT TOP 1 idPartida FROM PARTIDA WHERE IdTimeCasa = IdTime AND GolsTimeCasa = MaiorNroGols), " +
                                          " (SELECT TOP 1 idPartida FROM PARTIDA WHERE IdTimeVisitante = IdTime AND GolsTimeVisitante = MaiorNroGols)) IdPartida " +
                                          " FROM CLASSIFICACAO A JOIN CLUBE B " +
@@ -193,8 +222,30 @@ namespace P_Futebol
                     break;
 
             }
-            connSQL.Close();
+            _connSQL.Close();
             #endregion
+        }
+
+        public void ResetarCampeonato()
+        {
+            using (_connSQL)
+            {
+                try
+                {
+                    _connSQL.Open();
+                    SqlCommand sql_cmnd = new SqlCommand("ResetarCampeonato", _connSQL);
+                    sql_cmnd.CommandType = CommandType.StoredProcedure;
+                    sql_cmnd.ExecuteNonQuery();
+                    _connSQL.Close();
+                    Console.WriteLine("Campeonato restado com sucesso!");
+                    Console.WriteLine("\nPressione qualquer tecla para continuar");
+                    Console.ReadKey();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }
         }
 
 

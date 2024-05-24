@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace P_Futebol
+﻿namespace P_Futebol
 {
     internal class Banco
     {
@@ -12,7 +6,7 @@ namespace P_Futebol
 
         public Banco()
         {
-            
+
         }
         public string Caminho()
         {

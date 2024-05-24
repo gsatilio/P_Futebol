@@ -1,5 +1,4 @@
-﻿using Microsoft.Data.SqlClient;
-using P_Futebol;
+﻿using P_Futebol;
 
 internal class Program
 {
@@ -23,6 +22,7 @@ internal class Program
             Console.WriteLine("5 - Mostrar o time que mais levou gols");
             Console.WriteLine("6 - Mostrar a partida que mais teve gols");
             Console.WriteLine("7 - Mostrar maior número de gols por time em uma partida");
+            Console.WriteLine("8 - Resetar Campeonato");
             Console.WriteLine("0 - Sair do programa");
             opt = returnInt();
 
@@ -33,6 +33,9 @@ internal class Program
                     break;
                 case 1:
                     new BancoDML().InserirTime();
+                    break;
+                case 2:
+                    new BancoDML().InserirPartida();
                     break;
                 case 3:
                     new BancoDML().RetornarTabela();
@@ -48,6 +51,9 @@ internal class Program
                     break;
                 case 7:
                     new BancoDML().RetornarGols(3);
+                    break;
+                case 8:
+                    new BancoDML().ResetarCampeonato();
                     break;
                 default:
                     Console.WriteLine("Opção inválida.");
