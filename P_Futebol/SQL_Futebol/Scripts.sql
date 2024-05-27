@@ -189,6 +189,57 @@ BEGIN
 END
 GO
 
+
+
+CREATE PROCEDURE Relatorios_Gols 
+(@Tipo integer)
+AS
+BEGIN
+
+	IF @TIPO = 0
+		BEGIN
+		SELECT (B.Nome + ' (' + B.Apelido + ') ' + CONVERT(VARCHAR(10),B.DtCriacao,103)), A.GolsFeitos 
+		FROM CLASSIFICACAO A JOIN CLUBE B ON A.IdTime = B.Id 
+		WHERE A.GolsFeitos = (SELECT MAX(GolsFeitos) FROM CLASSIFICACAO) 
+	END
+	ELSE IF @TIPO = 1
+	BEGIN
+		SELECT (B.Nome + ' (' + B.Apelido + ') ' + CONVERT(VARCHAR(10),B.DtCriacao,103)), A.GolsSofridos 
+		FROM CLASSIFICACAO A JOIN CLUBE B ON A.IdTime = B.Id
+		WHERE A.GolsSofridos = (SELECT MAX(GolsSofridos) FROM CLASSIFICACAO)
+	END
+	ELSE IF @TIPO = 2
+	BEGIN
+		SELECT IdPartida, 
+		(SELECT C.NOME FROM CLUBE C WHERE C.ID = IdTimeCasa) TimeCasa, 
+		GolsTimeCasa,
+		(SELECT C.NOME FROM CLUBE C WHERE C.ID = IdTimeVisitante) TimeVisitante, 
+		GolsTimeVisitante,
+		(GolsTimeCasa + GolsTimeVisitante) TotalGols
+		FROM PARTIDA
+		WHERE(GolsTimeCasa + GolsTimeVisitante) = (SELECT MAX((GolsTimeCasa + GolsTimeVisitante)) FROM Partida)
+	END
+	ELSE IF @TIPO = 3
+	BEGIN
+		SELECT A.IdTime, (B.Nome + ' (' + B.Apelido + ') ' + CONVERT(VARCHAR(10),B.DtCriacao,103)), A.MaiorNroGols, 
+		ISNULL((SELECT TOP 1 idPartida FROM PARTIDA WHERE IdTimeCasa = IdTime AND GolsTimeCasa = MaiorNroGols), 
+		(SELECT TOP 1 idPartida FROM PARTIDA WHERE IdTimeVisitante = IdTime AND GolsTimeVisitante = MaiorNroGols)) IdPartida 
+		FROM CLASSIFICACAO A JOIN CLUBE B 
+		ON A.IdTime = B.Id
+	END
+	ELSE IF @TIPO = 4
+	BEGIN
+		SELECT IdPartida, 
+		(SELECT Nome + ' (' + Apelido + ') ' FROM Clube WHERE Clube.Id = Partida.IdTimeCasa), 
+		CAST(GolsTimeCasa AS VARCHAR(2)), 
+		CAST(GolsTimeVisitante AS VARCHAR(2)), 
+		(SELECT Nome + ' (' + Apelido + ') ' FROM Clube WHERE Clube.Id = Partida.IdTimeVisitante) 
+		FROM Partida
+	END
+
+END
+GO
+
 /*
 -- Para testar
 EXEC Inserir_Time 'Comédias FC','Coringas','2024-04-15'
